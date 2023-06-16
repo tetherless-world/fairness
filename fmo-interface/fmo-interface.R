@@ -3,8 +3,7 @@
 ## Helper code to interface between FMO (hosted on the Blazegraph instance
 ## here: https://lp01.idea.rpi.edu/blazegraph/) and R
 
-#library(SPARQL)
-source("SPARQL.R")
+source("SPARQL.R") # requires library(XML) & library(RCurl)
 library(dplyr)
 
 ## Setup
@@ -12,6 +11,7 @@ library(dplyr)
 # Sets some global vars
 
 #endpoint <- "http://10.0.0.66:9999/blazegraph/namespace/6-9-2023/sparql"
+#endpoint <- "https://128.113.12.16/blazegraph/namespace/fmo-6-15-2023/sparql"
 endpoint <- "https://lp01.idea.rpi.edu/blazegraph/namespace/fmo-6-15-2023/sparql"
 # endpoint <- "https://lp01.idea.rpi.edu/blazegraph/namespace/fmo-4-20-23/sparql"
 options <- NULL
@@ -336,7 +336,3 @@ clean_col <- function(col, single=TRUE) {
   
   return(uniques)
 }
-
-
-
-
