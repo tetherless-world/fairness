@@ -37,8 +37,11 @@ RUN mkdir /root/fairness
 COPY fmo-interface /root/fairness
 
 COPY Rprofile.site /usr/lib/R/etc/
+#COPY lp01-idea-rpi-edu.crt /root
+ADD lp01-idea-rpi-edu.crt /root
+RUN update-ca-certificates
 
-EXPOSE 3838
-#EXPOSE 1824
+#EXPOSE 3838
+EXPOSE 1824
 
-CMD ["R", "-e", "shiny::runApp('/root/fairness')"]
+CMD ["R", "-e", "shiny::runApp('/root/fairness', host = '0.0.0.0', port = 1824)"]
