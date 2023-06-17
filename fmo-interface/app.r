@@ -3,7 +3,6 @@
 library(shiny)
 library(shinyjs)
 library(bslib)
-library(stringr)
 
 source("fmo-interface.R")
 # also installs sparql

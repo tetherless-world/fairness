@@ -31,6 +31,9 @@ RUN R -e 'install.packages("shinyjs",repos="https://cloud.r-project.org/")'
 RUN R -e 'install.packages("bslib",repos="https://cloud.r-project.org/")'
 RUN R -e 'install.packages("RCurl",repos="https://cloud.r-project.org/")'
 RUN R -e 'install.packages("stringr",repos="https://cloud.r-project.org/")'
+RUN R -e 'install.packages("stringi",repos="https://cloud.r-project.org/")'
+RUN R -e 'install.packages("memoise",repos="https://cloud.r-project.org/")'
+RUN R -e 'install.packages("rdflib",repos="https://cloud.r-project.org/")'
 
 # copy the app to the image
 RUN mkdir /root/fairness
@@ -41,4 +44,4 @@ COPY Rprofile.site /usr/lib/R/etc/
 EXPOSE 3838
 #EXPOSE 1824
 
-CMD ["R", "-e", "shiny::runApp('/root/fairness')"]
+CMD ["R", "-e", "shiny::runApp('/root/fairness', host = '0.0.0.0', port = 3838)"]

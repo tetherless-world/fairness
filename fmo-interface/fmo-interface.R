@@ -3,16 +3,16 @@
 ## Helper code to interface between FMO (hosted on the Blazegraph instance
 ## here: https://lp01.idea.rpi.edu/blazegraph/) and R
 
-#library(SPARQL)
 source("SPARQL.R")
 library(dplyr)
+library(stringr)
 
 ## Setup
 
 # Sets some global vars
 
-#endpoint <- "http://10.0.0.66:9999/blazegraph/namespace/6-9-2023/sparql"
-endpoint <- "https://lp01.idea.rpi.edu/blazegraph/namespace/fmo-6-15-2023/sparql"
+endpoint <- "http://10.0.0.52:9999/blazegraph/namespace/6-9-2023/sparql"
+# endpoint <- "https://lp01.idea.rpi.edu/blazegraph/namespace/fmo-6-15-2023/sparql"
 # endpoint <- "https://lp01.idea.rpi.edu/blazegraph/namespace/fmo-4-20-23/sparql"
 options <- NULL
 
@@ -134,7 +134,7 @@ get_subcategories <- function(selected_category_uri = NULL) {
   
   return(res)
 }
-  
+
 
 #Populate list pane:
 
@@ -206,7 +206,7 @@ get_metrics <- function(selected_categorizations = NULL) {
   }
   
   q <- paste(sparql_prefix,"
-  SELECT DISTINCT ?metric_uri ?metric_label ?notion_label ?definition ?notion_uri ?p ?v
+  SELECT DISTINCT ?metric_uri ?metric_label ?notion_label ?definition ?notion_uri ?p
   WHERE {
     ?metric_uri rdfs:subClassOf+ fmo:fairness_metric.
     ?metric_uri rdfs:label ?metric_label_.
@@ -244,7 +244,7 @@ get_class_info <- function(class_uri,type="notion") {
   
   if(type == "notion"){
     q <- paste(sparql_prefix,"
-      SELECT DISTINCT ?label ?definition ?mathematical_definition ?probabilistic_definition ?source ?source_label ?alt_term ?superclass_uri ?superclass_label
+      SELECT DISTINCT ?label ?definition ?mathematical_definition ?probabilistic_definition ?source ?alt_term ?superclass_uri ?superclass_label
       WHERE {
           BIND (",class_uri," AS ?class_uri)
           ?class_uri rdfs:label ?label_.
@@ -281,7 +281,7 @@ get_class_info <- function(class_uri,type="notion") {
   }
   if(type == "metric"){
     q <- paste(sparql_prefix,"
-      SELECT DISTINCT ?label ?definition ?mathematical_definition ?probabilistic_definition ?source ?source_label ?alt_term ?superclass_uri ?superclass_label
+      SELECT DISTINCT ?label ?definition ?mathematical_definition ?probabilistic_definition ?source ?alt_term ?superclass_uri ?superclass_label
       WHERE {
           BIND (",class_uri," AS ?class_uri)
           ?class_uri rdfs:label ?label_.

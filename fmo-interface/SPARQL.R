@@ -1,5 +1,8 @@
 library(XML)
 library(RCurl)
+library(rdflib)
+library(stringi)
+library(memoise)
 
 sparqlns <- c('s'='http://www.w3.org/2005/sparql-results#')
 commonns <- c('xsd','<http://www.w3.org/2001/XMLSchema#>',
@@ -27,10 +30,80 @@ sparqltest <- function(...) {
          ...)
 }
 
+file <- rdf_parse(".\\fairnessmetrics.owl")
+
+cache <<- readRDS(file = "cache.Rds")
+
+saveToCache <- function(query,result){
+  if(!(query %in% cache$query)){
+    cache$query <<- append(cache$query,query)
+    cache$result <<- append(cache$result,list(result))
+    saveRDS(cache, file = "cache.Rds", compress=F)
+  }
+  else{
+    #print("Result already cached")
+  }
+}
+
+SPARQL_new <- memoise(function(url="http://localhost/", query="", update="", 
+                             ns=NULL, param="", extra=NULL, format="xml", curl_args=NULL, parser_args=NULL) {
+  
+  #check cache
+  
+  qloc <- match(query,cache$query)
+  if(!is.na(qloc)){
+    return(cache$result[[qloc]])
+  }
+  
+  query = gsub("\\+","",query)
+  query= gsub("FILTER NOT EXISTS \\{\\?x fmo:mapsTo \\?notion_uri\\}","",query)
+  #print(query)
+  df = rdf_query(file,query)
+  #print("")
+  #browser()
+  if(!is.null(ns)){
+    ns_old <- ns
+    ns = matrix(ns,ncol=2,byrow=TRUE)
+    ns <- gsub("<","",ns)
+    ns <- gsub(">","",ns)
+    ns[,1] = apply(ns,1,function(x){paste(x[1],":",sep="")})
+    
+    df <- data.frame(apply(df,2,function(x){
+      stri_replace_all_regex(x,ns[,2],ns[,1],vectorize=FALSE)
+    }))
+    res = list(results=df,namespaces=ns_old)
+  }
+  else{
+    res=list(results=df)
+  }
+  
+  return(res)
+})
+
+SPARQL <- function(...){
+  #print("querying...")
+  df_new = SPARQL_new(...)
+  #df_old = SPARQL_old_cached(...)
+  #print("df_new")
+  #print(df_new)
+  #print("df_old")
+  #print(df_old)
+  
+  return(df_new)
+}
+
+
+SPARQL_old_cached <- memoise(function(url="",query="",...){
+  
+  result = SPARQL_old(url,query,...)
+  #print("Caching...")
+  saveToCache(query,result)
+  return(result)
+})
+
 #
 # Read SPARQL results from end-point
-#
-SPARQL <- function(url="http://localhost/", query="", update="", 
+SPARQL_old <- function(url="http://localhost/", query="", update="", 
                    ns=NULL, param="", extra=NULL, format="xml", curl_args=NULL, parser_args=NULL) {
   if (!is.null(extra)) {
     extrastr <- paste('&', sapply(seq(1,length(extra)),
