@@ -111,11 +111,11 @@ ui <- fluidPage(
                                          Improvements to this application will continue to be made. </p> 
                                          </div>
                                      <h1 style = 'color:#990000; font-size: 1.5em;'>
-                                     <a href='https://idea.rpi.edu/'; style = 'color: #990000; background-color: #f7f7f7;'>About IDEA</a>
+                                     <a href='https://idea.rpi.edu/' target='_blank' style = 'color: #990000; background-color: #f7f7f7;'>About IDEA</a>
                                      |
-                                     <a href='https://info.rpi.edu/web-privacy-statement'; style = 'color: #990000; background-color: #f7f7f7;'>Privacy Policy</a>
+                                     <a href='https://info.rpi.edu/web-privacy-statement' target='_blank' style = 'color: #990000; background-color: #f7f7f7;'>Privacy Policy</a>
                                      |
-                                     <a href='https://github.com/frankj-rpi/fairness-metrics-ontology'; style = 'color: #990000; background-color: #f7f7f7;'>GitHub</a>
+                                     <a href='https://github.com/frankj-rpi/fairness-metrics-ontology' target='_blank' style = 'color: #990000; background-color: #f7f7f7;'>GitHub</a>
                                      </h1>
                                      </footer>")
 )
