@@ -293,6 +293,22 @@ server <- function(session, input, output) {
       )
     })
 
+    # Content of modal dialog
+  query_modal <- modalDialog(
+    title = "Welcome to the Fairness Metric Explorer",
+    "PLEASE NOTE: This application is the result of the efforts of students 
+    and staff of the Rensselaer IDEA and the Tetherless World Constellation at RPI.
+    This is a prototype application and may not meet all of the standards one might 
+    expect of a production commercial product.",
+    easyClose = F,
+    footer = tagList(actionButton("run", "Continue with the Fairness Metric Explorer"))
+  )
+  
+  # Creates modal dialog
+  showModal(query_modal)
+  
+  # Removes modal
+  observeEvent(input$run, {removeModal()})
 }
 
 # Run the application 
