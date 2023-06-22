@@ -61,8 +61,9 @@ ui <- fluidPage(
                 .subcat {margin-left: 20px})
     "), 
     # Application title
-    titlePanel("Fairness Metric Explorer"),
-
+    titlePanel(h1("Fairness Metric Explorer",align="center")),
+    HTML("<p style='text-align: center;'><b>Powered by the <a href='https://github.com/frankj-rpi/fairness-metrics-ontology' target='_blank'>Fairness Metrics Ontology</a></b></p>"),
+    hr(),
     fluidRow(
       
       column(3,
@@ -103,19 +104,22 @@ ui <- fluidPage(
         )
       )
     ),
-    hr(),
+    #hr(),
     HTML("<footer style='text-align: center;'>
-                                             <h4 style = 'text-align: left'>DISCLAIMERS</h4>
+                                             <!--h4 style = 'text-align: left'>ABOUT</h4-->
                                          <div style='margin-left: 1%'>
-                                         <p>Some of the information displayed is approximated and/or may not be 100% accurate as it is an approximation of imperfect data. 
-                                         Improvements to this application will continue to be made. </p> 
+                                         <p><b>See our most recently published paper on the Fairness Metrics Ontology: <a href=https://dl.acm.org/doi/10.1145/3514094.3534137 target='_blank'>An Ontology for Fairness Metrics</a></b></p> 
                                          </div>
                                      <h1 style = 'color:#990000; font-size: 1.5em;'>
-                                     <a href='https://idea.rpi.edu/' target='_blank' style = 'color: #990000; background-color: #f7f7f7;'>About IDEA</a>
+                                     <a href='https://idea.rpi.edu/' target='_blank' style = 'color: #990000; background-color: #f7f7f7;'>About RPI-IDEA</a>
+                                     |
+                                     <a href='https://tw.rpi.edu/about' target='_blank' style = 'color: #990000; background-color: #f7f7f7;'>About TWC</a>
                                      |
                                      <a href='https://info.rpi.edu/web-privacy-statement' target='_blank' style = 'color: #990000; background-color: #f7f7f7;'>Privacy Policy</a>
                                      |
-                                     <a href='https://github.com/frankj-rpi/fairness-metrics-ontology' target='_blank' style = 'color: #990000; background-color: #f7f7f7;'>GitHub</a>
+                                     <a href='https://github.com/tetherless-world/fairness' target='_blank' style = 'color: #990000; background-color: #f7f7f7;'>Explorer GitHub</a>
+                                     |
+                                     <a href='https://github.com/frankj-rpi/fairness-metrics-ontology' target='_blank' style = 'color: #990000; background-color: #f7f7f7;'>Ontology GitHub</a>
                                      </h1>
                                      </footer>")
 )
@@ -282,8 +286,9 @@ server <- function(session, input, output) {
       if(clean_col(class_to_show$mathematical_definition)!=""){
         mdef = tagList(
           br(),
-          strong("Mathematical Definition:"),withMathJax(helpText((clean_col(class_to_show$mathematical_definition)))),
+          strong("Mathematical Definition:"),withMathJax(helpText(paste("\\(",clean_col(class_to_show$mathematical_definition)),"\\)")),
           #strong("Mathematical Definition:"),withMathJax(helpText("The ranking equivalent of Statistical Parity, this notion requires that \\(P[f(X) > f(X') | (X,Y)\\in G_i,(X',Y')\\in G_j]=\\kappa\\) for some \\(\\kappa\\in[0,1]\\) for all \\(i\\neq j\\). ")),
+          #strong("Mathematical Definition:"),withMathJax(helpText("$$\\min{balance(C_i)} \\forall C_i \\in C$$")),
           br()
         )
       }
