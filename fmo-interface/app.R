@@ -52,6 +52,11 @@ ui <- fluidPage(
     #theme = bs_theme(version = 4, bootswatch = "minty"),
     useShinyjs(),
   
+    # RPI Logo
+    img(src='RensselaerLogo_black.png', align = "left", height="75px"),
+    tags$br(),
+    tags$br(),
+    tags$br(),
     tags$style(type='text/css',"
                 .subcat {margin-left: 20px})
     "), 
