@@ -99,7 +99,7 @@ ui <- fluidPage(
       )
     ),
     hr(),
-    HTML("<footer text-align: center; '>
+    HTML("<footer style='text-align: center;'>
                                              <h4 style = 'text-align: left'>DISCLAIMERS</h4>
                                          <div style='margin-left: 1%'>
                                          <p>Some of the information displayed is approximated and/or may not be 100% accurate as it is an approximation of imperfect data. 
