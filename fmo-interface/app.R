@@ -49,6 +49,7 @@ named_metrics <- get_named_metrics(NULL)
 
 # Define UI for application
 ui <- fluidPage(
+    tags$head(HTML("<title>FMO Explorer</title>")),
     #theme = bs_theme(version = 4, bootswatch = "minty"),
     useShinyjs(),
   
