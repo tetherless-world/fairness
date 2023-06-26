@@ -105,7 +105,7 @@ SPARQL_local <- memoise(function(url="http://localhost/", query="", update="",
 
 SPARQL_remote_cache <- memoise(function(url="",query="",...){
   
-  print(query)
+  #print(query)
   
   result = SPARQL_remote(url,query,...)
   #print("Caching...")

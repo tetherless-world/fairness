@@ -82,8 +82,6 @@ get_categories <- function() {
   res <- res %>% 
     mutate(query_notion = str_replace(query_notion, "\\?category_uri", category_uri))
   
-  print(res)
-  
   return(res)
 }
 
@@ -191,7 +189,7 @@ get_notions <- function(selected_categorizations = NULL) {
   res <- SPARQL(endpoint,q,ns=ret_prefix,extra=options)$results
   
   if(length(res)==0){
-    print("Res length zero!")
+    print("Warning: get notions query returned zero results!")
     print("")
     print(q)
     print("res:")
@@ -284,7 +282,8 @@ get_named_metrics <- function(cat = NULL) {
 get_class_info <- function(class_uri) {
   
     q <- paste(sparql_prefix,"
-      SELECT DISTINCT ?label ?definition ?mathematical_definition ?probabilistic_definition ?source ?alt_term ?superclass_uri ?superclass_label
+ 
+      SELECT DISTINCT ?label ?definition ?mathematical_definition ?probabilistic_definition ?source ?alt_term ?superclass_uri ?superclass_label ?notion_uri ?notion_label ?metric_uri ?metric_label
       WHERE {
           BIND (",class_uri," AS ?class_uri)
           ?class_uri rdfs:label ?label_.
@@ -314,6 +313,20 @@ get_class_info <- function(class_uri) {
             ?superclass_uri rdfs:label ?superclass_label_.
             BIND(str(?superclass_label_) AS ?superclass_label).
           }
+          UNION {
+            ?class_uri rdfs:subClassOf+ fmo:fairness_metric.
+            ?class_uri rdfs:subClassOf [a owl:Restriction; owl:onProperty sio:000215; owl:someValuesFrom ?notion_uri].
+            ?notion_uri rdfs:subClassOf* fmo:fairness_notion.
+            ?notion_uri rdfs:label ?notion_label_.
+            BIND(str(?notion_label_) AS ?notion_label).
+          }
+          UNION {
+            ?class_uri rdfs:subClassOf+ fmo:fairness_notion.
+            ?metric_uri rdfs:subClassOf+ fmo:fairness_metric.
+            ?metric_uri rdfs:subClassOf [a owl:Restriction; owl:onProperty sio:000215; owl:someValuesFrom [rdfs:subClassOf* ?class_uri]].
+            ?metric_uri rdfs:label ?metric_label_.
+            BIND(str(?metric_label_) AS ?metric_label).
+          }
       }
     ")
 
@@ -321,22 +334,22 @@ get_class_info <- function(class_uri) {
     return(res)
   }
 
-
 #         OPTIONAL{?source_ rdfs:label ?source_label_.}
 #         BIND(str(COALESCE(?source_label_.,?source_)) as ?source_label).
 
-
+# Cleans a column up for display -- 
+#   returning either the first result (for single=TRUE), 
+#   or all results with NAs removed (single=FALSE)
 clean_col <- function(col, single=TRUE) {
   uniques <- unique(na.omit(col))
-  
-  if(length(uniques)==0) return("")
-  
-  if(single && length(uniques) > 1){
-    #print("WARNING: Returned too many results, taking first result from list")
-    #print(" Results returned:")
-    #print(paste(" -",uniques))
-    return(uniques[1])
+  if(single){
+    if(length(uniques)==0) return("")
+    if(length(uniques) > 1){
+      #print("WARNING: Returned too many results, taking first result from list")
+      #print(" Results returned:")
+      #print(paste(" -",uniques))
+      return(uniques[1])
+    }
   }
-  
   return(uniques)
 }

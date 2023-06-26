@@ -307,21 +307,47 @@ server <- function(session, input, output) {
           strong("Select a concept from the list view, or hover over a concept from the category view on the left, to see details here about the concept.")
         ))
       }
-      pdef = br()
-      if(clean_col(class_to_show$probabilistic_definition)!=""){
+      pdef = div()
+      pdef_res = clean_col(class_to_show$probabilistic_definition)
+      if(pdef_res!=""){
         pdef = tagList(
-          br(),
-          strong("Probabilistic Definition:"),span(clean_col(class_to_show$probabilistic_definition)),
+          strong("Probabilistic Definition:"),span(pdef_res),
           br()
         )
       }
-      mdef = br()
+      mdef = div()
       if(clean_col(class_to_show$mathematical_definition)!=""){
         mdef = tagList(
-          br(),
           strong("Mathematical Definition:"),withMathJax(helpText(paste("\\(",clean_col(class_to_show$mathematical_definition)),"\\)")),
           #strong("Mathematical Definition:"),withMathJax(helpText("The ranking equivalent of Statistical Parity, this notion requires that \\(P[f(X) > f(X') | (X,Y)\\in G_i,(X',Y')\\in G_j]=\\kappa\\) for some \\(\\kappa\\in[0,1]\\) for all \\(i\\neq j\\). ")),
           #strong("Mathematical Definition:"),withMathJax(helpText("$$\\min{balance(C_i)} \\forall C_i \\in C$$")),
+          br()
+        )
+      }
+      measures_notion = div()
+      if(clean_col(class_to_show$notion_label)!=""){
+        measures_notion = tagList(
+          strong("Measures:"),span(str_to_title(clean_col(class_to_show$notion_label))),br()
+        )
+      } else if("fmo:fairness_metric" %in% class_to_show$superclass_uri){
+        measures_notion = tagList(
+          strong("Measurement of any fairness notion"),br(),
+        )
+      }
+      measured_by_metric = div()
+      metric_res = clean_col(class_to_show$metric_label,single=FALSE)
+      if(length(metric_res)>0){
+        metric_taglist = lapply(metric_res, function(metric_label){
+          tagList(span(paste("-",str_to_title(metric_label),sep="  ")),br())
+        })
+        measured_by_metric = tagList(
+          strong("Measured specifically by:"),br(),
+          metric_taglist,
+          br()
+        )
+      }else if("fmo:fairness_notion" %in% class_to_show$superclass_uri){
+        measured_by_metric = tagList(
+          strong("Measured by any generic fairness metric"),br(),
           br()
         )
       }
@@ -329,10 +355,12 @@ server <- function(session, input, output) {
       tagList(
         h3(str_to_title(clean_col(class_to_show$label)),style="margin-top:0"),
         h4(str_to_title(clean_col(class_to_show$superclass_label))),
-        strong("Description:"),span(clean_col(class_to_show$definition)),
+        measures_notion,
+        strong("Description:"),span(clean_col(class_to_show$definition)),br(),
         pdef,
         mdef,
         br(),
+        measured_by_metric,
         strong("Source:"),a(href=clean_col(class_to_show$source),clean_col(class_to_show$source))
       )
     })
