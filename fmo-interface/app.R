@@ -23,9 +23,19 @@ select_label_id <- function(...) {
   return(uri)
 }
 
+# customized extension of the checkboxGroupInput widget
 
 extCheckboxGroupInput <- function(...) {
+  
+  # temporarily disable htmlEscape
+  saved.htmlEscape <- htmltools::htmlEscape
+  assignInNamespace("htmlEscape", function(x, attribute) return(x), "htmltools")
+  
   cbg <- checkboxGroupInput(...)
+  
+  ## restore htmlEscape function
+  assignInNamespace("htmlEscape", saved.htmlEscape, "htmltools")
+  
   nChoices <- length(cbg$children[[2]]$children[[1]])
   lapply(1:min(nChoices),function(i){
     choice <- cbg$children[[2]]$children[[1]][[i]]
@@ -70,17 +80,18 @@ ui <- fluidPage(
       column(3,
          wellPanel(
            # div(class = 'subcat',id="test",
-           #     extCheckboxGroupInput("inCh_ckboxGroup", "Input checkbox",
-           #                    c("Item A", "Item B", "Item C"))
+           #     extCheckboxGroupInput("inCh_ckboxGroup", "Input checkbox<i>ital</i>",
+           #                    c("Item A", "<i>Item</i> B", "Item C"))
            # ),
-           h3('Filter by:',style="margin-top:0"),
+           #h3('Filter by:',style="margin-top:0"),
+           uiOutput('category_view_title'),
            uiOutput('category_view'),
          )
       ),
       column(4,
              wellPanel(
                h3('List:',style="margin-top:0"),
-               tabsetPanel(type = "tabs",
+               tabsetPanel(type = "tabs", id="search_type",
                            tabPanel("Fairness Notions",selectInput('select_notion', 
                                                        '',
                                                        multiple=FALSE,
@@ -100,7 +111,7 @@ ui <- fluidPage(
       ),
       column(5,
         wellPanel(
-            h3('Class View:',style="margin-top:0"),
+            #h3('Class View:',style="margin-top:0"),
             uiOutput('class_view') 
         )
       )
@@ -131,13 +142,12 @@ server <- function(session, input, output) {
     # the last selected class
     #selected_class = reactiveVal(get_class_info("fmo:fairness_notion"))
     
-    # the CURRENTLY selected class
     selected_class <- reactive({
       if(input$search_type == "Fairness Notions" && !is.null(input$select_notion)){
-        get_class_info(input$select_notion)
+        return(get_class_info(input$select_notion))
       }
       if(input$search_type == "Fairness Metrics" && !is.null(input$select_metric)){
-        get_class_info(input$select_metric)
+        return(get_class_info(input$select_metric))
       }
     })
     
@@ -168,10 +178,12 @@ server <- function(session, input, output) {
       named_notions <- get_named_notions(filtered_cat)
       updateSelectInput(session, "select_notion",
                         #label = "Fairness notions for selected categories",
+                        selected = NULL,
                         choices = named_notions)
       named_metrics <- get_named_metrics(filtered_cat)
       updateSelectInput(session, "select_metric",
                         #label = "Fairness metrics for selected categories",
+                        selected = NULL,
                         choices = named_metrics)
     }
     
@@ -179,8 +191,6 @@ server <- function(session, input, output) {
       # determine which subcategories need to be displayed
       category_uri <- input[[select_id(cat)]]
       subcats <- all_subcat[all_subcat$supercategorization_uri==cat & all_subcat$supercategory_uri %in% category_uri,]
-      
-      # display each
       lapply(subcategorizations,function(subcat){
         if(subcat %in% subcats$categorization_uri){
           # get uris
@@ -244,14 +254,14 @@ server <- function(session, input, output) {
     # onevent(event="mouseenter", id="hover_fmo_Classification_Problem", print("cata"))
     
     # whenever a notion is selected:
-    observeEvent(input$select_notion, {
-      selected_class(get_class_info(input$select_notion))
-    })
-    
-    # whenever a metric is selected:
-    observeEvent(input$select_metric, {
-      selected_class(get_class_info(input$select_metric,type="metric"))
-    })
+    # observeEvent(input$select_notion, {
+    #   selected_class(get_class_info(input$select_notion))
+    # })
+    # 
+    # # whenever a metric is selected:
+    # observeEvent(input$select_metric, {
+    #   selected_class(get_class_info(input$select_metric,type="metric"))
+    # })
     
     # populate category view
     # 1) for each categorization, get the subset of applicable categories
@@ -259,9 +269,9 @@ server <- function(session, input, output) {
     output$category_view = renderUI({
       lapply(categorizations, function(cat) {
         cats <- subset(all_cat,categorization_uri==cat)
-        cat_label = unique(all_cat[all_cat$categorization_uri==cat,"categorization_label"])
+        cat_label = unique(all_cat[all_cat$categorization_uri==cat,"categorization_header"])
         subcategorization_checkboxes <- lapply(subcategorizations,function(subcat){
-          subcat_label = unique(all_subcat[all_subcat$categorization_uri==subcat,"categorization_label"])
+          subcat_label = unique(all_subcat[all_subcat$categorization_uri==subcat,"categorization_header"])
           subcat_choices = unique(all_subcat$category_uri)
           names(subcat_choices) = unique(all_subcat$category_label)
           div(class="subcat",
@@ -273,7 +283,7 @@ server <- function(session, input, output) {
         tagList(
           extCheckboxGroupInput(select_id(cat), 
                              cat_label,
-                             choiceNames = cats$category_label,
+                             choiceNames = cats$category_header,
                              choiceValues = cats$category_uri),
           subcategorization_checkboxes
 
@@ -281,11 +291,21 @@ server <- function(session, input, output) {
       })
     })
     
+    output$category_view_title = renderUI({
+      h3(p('Search for',tolower(input$search_type),'that:'),style="margin-top:0")
+    })
+    
     output$class_view = renderUI({
       
       class_to_show <- selected_class()
       if(!is.null(hovered_class())){
         class_to_show <- hovered_class()
+      }
+      if(is.null(class_to_show)){
+        return(tagList(
+          h3('Concept View',style="margin-top:0"),
+          strong("Select a concept from the list view, or hover over a concept from the category view on the left, to see details here about the concept.")
+        ))
       }
       pdef = br()
       if(clean_col(class_to_show$probabilistic_definition)!=""){
@@ -307,7 +327,8 @@ server <- function(session, input, output) {
       }
       
       tagList(
-        h4(str_to_title(clean_col(class_to_show$label))),
+        h3(str_to_title(clean_col(class_to_show$label)),style="margin-top:0"),
+        h4(str_to_title(clean_col(class_to_show$superclass_label))),
         strong("Description:"),span(clean_col(class_to_show$definition)),
         pdef,
         mdef,
@@ -316,6 +337,11 @@ server <- function(session, input, output) {
       )
     })
 
+    # stop app after session ends
+    session$onSessionEnded(function() {
+      stopApp()
+    })
+    
     # Content of modal dialog
   query_modal <- modalDialog(
     title = "Welcome to the Fairness Metric Explorer",

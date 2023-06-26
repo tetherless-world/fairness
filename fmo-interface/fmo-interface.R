@@ -11,17 +11,17 @@ library(stringr)
 
 # Sets some global vars
 
-#endpoint <- "http://10.0.0.66:9999/blazegraph/namespace/6-9-2023/sparql"
-#endpoint <- "https://128.113.12.16/blazegraph/namespace/fmo-6-15-2023/sparql"
-endpoint <- "https://lp01.idea.rpi.edu/blazegraph/namespace/fmo-6-15-2023/sparql"
+#endpoint <- "http://10.0.0.80:9999/blazegraph/namespace/6-9-2023/sparql"
+endpoint <- "http://10.0.0.83:9999/blazegraph/namespace/6-24-2023/sparql"
 
-# endpoint <- "https://lp01.idea.rpi.edu/blazegraph/namespace/fmo-4-20-23/sparql"
+#endpoint <- "https://lp01.idea.rpi.edu/blazegraph/namespace/fmo-6-15-2023/sparql"
+
 options <- NULL
 
 ret_prefix <- c(
   'dc','<http://purl.org/dc/elements/1.1/>',
   'skos','<http://www.w3.org/2004/02/skos/core#>',
-  'fmo','<https://purl.org/heals/fmo#>',
+  'fmo','<https://purl.org/twc/fmo#>',
   'rdfs','<http://www.w3.org/2000/01/rdf-schema#>',
   'dc', '<http://purl.org/dc/elements/1.1/>',
   'iao', '<http://purl.obolibrary.org/obo/IAO_>',
@@ -30,7 +30,7 @@ ret_prefix <- c(
 )
 
 sparql_prefix <- "
-  PREFIX fmo: <https://purl.org/heals/fmo#>
+  PREFIX fmo: <https://purl.org/twc/fmo#>
   PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
   PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
   PREFIX dc: <http://purl.org/dc/elements/1.1/>
@@ -53,28 +53,36 @@ get_categories <- function() {
     }
   ")
   q <- paste(sparql_prefix,"
-  SELECT DISTINCT ?categorization_label ?categorization_uri ?category_label ?category_uri ?query_notion ?ord ?ord2
+  SELECT DISTINCT ?categorization_label ?categorization_uri ?categorization_header ?category_label ?category_uri ?category_header ?query_notion ?ord ?ord2
   WHERE {
     ?categorization_uri a fmo:fairness_notion_categorization.
     ?categorization_uri rdfs:label ?categorization_label_.
     OPTIONAL{?categorization_uri skos:prefLabel ?categorization_preflabel_.}
     BIND(str(COALESCE(?categorization_preflabel_,?categorization_label_)) as ?categorization_label).
+    OPTIONAL{?categorization_uri fmo:category_header ?categorization_header_.}
+    BIND(str(COALESCE(?categorization_header_,?categorization_preflabel_,?categorization_label_)) AS ?categorization_header).
     ?category_uri skos:topConceptOf ?categorization_uri.
     ?category_uri rdfs:label ?category_label_.
     OPTIONAL{?category_uri skos:prefLabel ?category_preflabel_.}
     BIND(str(COALESCE(?category_preflabel_,?category_label_)) as ?category_label).
+    OPTIONAL{?category_uri fmo:category_header ?category_header_.}
+    BIND(str(COALESCE(?category_header_,?category_preflabel_,?category_label_)) AS ?category_header).
     OPTIONAL{?categorization_uri fmo:display_order ?ord.}
     OPTIONAL{?category_uri fmo:display_order ?ord2.}
     ?categorization_uri fmo:queryNotion ?query_notion_.
     BIND(str(?query_notion_) AS ?query_notion).
+    FILTER NOT EXISTS {?categorization_uri fmo:tag 'exclude'.}
+    FILTER NOT EXISTS {?category_uri fmo:tag 'exclude'.}
   }
   ORDER BY ?ord ?ord2
   ")
   res <- SPARQL(endpoint,q,ns=ret_prefix,extra=options)$results
-  
+  #browser()
   # replace variables in the query snippet
   res <- res %>% 
     mutate(query_notion = str_replace(query_notion, "\\?category_uri", category_uri))
+  
+  print(res)
   
   return(res)
 }
@@ -84,17 +92,21 @@ get_categories <- function() {
 get_subcategories <- function(selected_category_uri = NULL) {
   if (!is.null(selected_category_uri)){
     q <- paste(sparql_prefix,"
-  SELECT DISTINCT ?categorization_label ?categorization_uri ?category_label ?category_uri ?query_notion ?ord ?ord2
+  SELECT DISTINCT ?categorization_label ?categorization_uri ?categorization_header ?category_label ?category_uri ?category_header ?query_notion ?ord ?ord2
   WHERE {
     BIND(",selected_category_uri," AS ?supercategory_uri)
     ?supercategory_uri skos:related ?category_uri.
     ?category_uri skos:topConceptOf ?categorization_uri.
     ?categorization_uri a fmo:fairness_notion_subcategorization.
     ?categorization_uri rdfs:label ?categorization_label_.
+    OPTIONAL{?categorization_uri fmo:category_header ?categorization_header_.}
+    BIND(str(COALESCE(?categorization_header_,?categorization_preflabel_,?categorization_label_)) AS ?categorization_header).
     OPTIONAL{?categorization_uri skos:prefLabel ?categorization_preflabel_.}
     BIND(str(COALESCE(?categorization_preflabel_,?categorization_label_)) as ?categorization_label).
     ?category_uri rdfs:label ?category_label_.
     OPTIONAL{?category_uri skos:prefLabel ?category_preflabel_.}
+    OPTIONAL{?category_uri fmo:category_header ?category_header_.}
+    BIND(str(COALESCE(?category_header_,?category_preflabel_,?category_label_)) AS ?category_header).
     BIND(str(COALESCE(?category_preflabel_,?category_label_)) as ?category_label).
     OPTIONAL{?categorization_uri fmo:display_order ?ord.}
     OPTIONAL{?category_uri fmo:display_order ?ord2.}
@@ -131,8 +143,10 @@ get_subcategories <- function(selected_category_uri = NULL) {
   res <- SPARQL(endpoint,q,ns=ret_prefix,extra=options)$results
   
   # replace variables in the query snippet
-  res <- res %>% 
-    mutate(query_notion = str_replace(query_notion, "\\?category_uri", category_uri))
+  if (length(res) > 0){
+    res <- res %>% 
+      mutate(query_notion = str_replace(query_notion, "\\?category_uri", category_uri))
+  }
   
   return(res)
 }
@@ -164,14 +178,26 @@ get_notions <- function(selected_categorizations = NULL) {
     SELECT DISTINCT ?notion_label ?definition ?notion_uri 
     WHERE {
        ?notion_uri rdfs:subClassOf+ fmo:fairness_notion.
+       FILTER (NOT EXISTS {?x fmo:mapsTo ?notion_uri}
+         && NOT EXISTS {?notion_uri fmo:tag 'hide'} 
+         && NOT EXISTS {?notion_uri rdfs:subClassOf+ [fmo:tag 'exclude']}
+       )
        ?notion_uri rdfs:label ?notion_label_.
        BIND(str(?notion_label_) AS ?notion_label).
        ?notion_uri skos:definition ?definition.
        ",filter_cat,"
-       FILTER NOT EXISTS {?x fmo:mapsTo ?notion_uri}
     }
   ")
   res <- SPARQL(endpoint,q,ns=ret_prefix,extra=options)$results
+  
+  if(length(res)==0){
+    print("Res length zero!")
+    print("")
+    print(q)
+    print("res:")
+    print(res)
+  }
+  
   return(res)
 }
 
@@ -208,20 +234,33 @@ get_metrics <- function(selected_categorizations = NULL) {
   }
   
   q <- paste(sparql_prefix,"
-  SELECT DISTINCT ?metric_uri ?metric_label ?notion_label ?definition ?notion_uri ?p
+  SELECT DISTINCT ?metric_uri ?metric_label ?notion_label ?definition ?notion_uri
   WHERE {
     ?metric_uri rdfs:subClassOf+ fmo:fairness_metric.
     ?metric_uri rdfs:label ?metric_label_.
+    FILTER (NOT EXISTS {?metric_uri fmo:tag 'hide'} 
+            && NOT EXISTS {?metric_uri rdfs:subClassOf+ [fmo:tag 'exclude']}
+           )
     BIND(str(?metric_label_) AS ?metric_label).
     ?metric_uri skos:definition ?definition.
     
-    ?metric_uri rdfs:subClassOf+ [a owl:Restriction; owl:onProperty ?p; owl:someValuesFrom ?notion_uri].
-    ?notion_uri rdfs:subClassOf+ fmo:fairness_notion.
+    ?metric_uri rdfs:subClassOf+ [a owl:Restriction; owl:onProperty sio:000215; owl:someValuesFrom fmo:fairness_notion].
+    OPTIONAL{
+      ?metric_uri rdfs:subClassOf+ [a owl:Restriction; owl:onProperty sio:000215; owl:someValuesFrom ?notion_uri_].
+      ?notion_uri_ rdfs:subClassOf+ fmo:fairness_notion.
+    }
+    BIND(COALESCE(?notion_uri_,fmo:fairness_notion) AS ?notion_uri)
+    
+    OPTIONAL {
+      ",filter_cat,"
+      BIND('TRUE' AS ?matches_filters )
+    }
+    
     ?notion_uri rdfs:label ?notion_label_.
-    ",filter_cat,"
     BIND(str(?notion_label_) AS ?notion_label).
     
-  }
+    FILTER (?notion_uri=fmo:fairness_notion || bound(?matches_filters))
+  } ORDER BY ?metric_label ?notion_label
   ")
   res <- SPARQL(endpoint,q,ns=ret_prefix,extra=options)$results
   return(res)
@@ -281,7 +320,7 @@ get_class_info <- function(class_uri) {
     res <- SPARQL(endpoint,q,ns=ret_prefix,extra=options)$results
     return(res)
   }
-}
+
 
 #         OPTIONAL{?source_ rdfs:label ?source_label_.}
 #         BIND(str(COALESCE(?source_label_.,?source_)) as ?source_label).
