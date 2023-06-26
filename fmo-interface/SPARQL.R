@@ -4,6 +4,10 @@ library(rdflib)
 library(stringi)
 library(memoise)
 
+# MODE_REMOTE == TRUE: Query the endpoint, save result in cache
+# MODE_REMOTE == FALSE: Query the cache, use rdflib as a fallback
+MODE_REMOTE <- TRUE
+
 sparqlns <- c('s'='http://www.w3.org/2005/sparql-results#')
 commonns <- c('xsd','<http://www.w3.org/2001/XMLSchema#>',
               'rdf','<http://www.w3.org/1999/02/22-rdf-syntax-ns#>',
@@ -45,7 +49,21 @@ saveToCache <- function(query,result){
   }
 }
 
-SPARQL_new <- memoise(function(url="http://localhost/", query="", update="", 
+SPARQL <- function(...){
+  
+  if (MODE_REMOTE){
+    #print("querying BLAZEGRAPH...")
+    df = SPARQL_remote_cache(...)
+  }
+  else {
+    #print("querying CACHE/RDFLIB...")
+    df = SPARQL_local(...)
+  }
+  
+  return(df)
+}
+
+SPARQL_local <- memoise(function(url="http://localhost/", query="", update="", 
                              ns=NULL, param="", extra=NULL, format="xml", curl_args=NULL, parser_args=NULL) {
   
   #check cache
@@ -55,8 +73,12 @@ SPARQL_new <- memoise(function(url="http://localhost/", query="", update="",
     return(cache$result[[qloc]])
   }
   
+  #try rdflib
+  
   query = gsub("\\+","",query)
   query= gsub("FILTER NOT EXISTS \\{\\?x fmo:mapsTo \\?notion_uri\\}","",query)
+  query= gsub("FILTER NOT EXISTS {?categorization_uri fmo:tag 'exclude'.}","",query)
+  query= gsub("FILTER NOT EXISTS {?category_uri fmo:tag 'exclude'.}","",query)
   #print(query)
   df = rdf_query(file,query)
   #print("")
@@ -80,22 +102,12 @@ SPARQL_new <- memoise(function(url="http://localhost/", query="", update="",
   return(res)
 })
 
-SPARQL <- function(...){
-  #print("querying...")
-  df_new = SPARQL_new(...)
-  #df_old = SPARQL_old_cached(...)
-  #print("df_new")
-  #print(df_new)
-  #print("df_old")
-  #print(df_old)
-  
-  return(df_new)
-}
 
-
-SPARQL_old_cached <- memoise(function(url="",query="",...){
+SPARQL_remote_cache <- memoise(function(url="",query="",...){
   
-  result = SPARQL_old(url,query,...)
+  print(query)
+  
+  result = SPARQL_remote(url,query,...)
   #print("Caching...")
   saveToCache(query,result)
   return(result)
@@ -103,7 +115,7 @@ SPARQL_old_cached <- memoise(function(url="",query="",...){
 
 #
 # Read SPARQL results from end-point
-SPARQL_old <- function(url="http://localhost/", query="", update="", 
+SPARQL_remote <- function(url="http://localhost/", query="", update="", 
                    ns=NULL, param="", extra=NULL, format="xml", curl_args=NULL, parser_args=NULL) {
   if (!is.null(extra)) {
     extrastr <- paste('&', sapply(seq(1,length(extra)),
