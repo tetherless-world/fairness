@@ -49,6 +49,10 @@ extCheckboxGroupInput <- function(...) {
 ## App
 
 all_cat <- get_categories()
+# removing individual fairness as a high-level notion:
+# inelegant temporary hack 
+all_cat <- subset(all_cat, category_uri!="fmo:individual-level_fairness_notion")
+
 categorizations <- unique(na.omit(all_cat$categorization_uri))
 
 all_subcat <- get_subcategories()
@@ -65,6 +69,8 @@ ui <- fluidPage(
   
     # RPI Logo
     img(src='RensselaerLogo_black.png', align = "left", height="75px"),
+    # TWC Logo
+    img(src='twc_green.png', align = "right", height="75px"),
     tags$br(),
     tags$br(),
     tags$br(),
@@ -77,7 +83,7 @@ ui <- fluidPage(
     hr(),
     fluidRow(
       
-      column(3,
+      column(4,
          wellPanel(
            # div(class = 'subcat',id="test",
            #     extCheckboxGroupInput("inCh_ckboxGroup", "Input checkbox<i>ital</i>",
@@ -88,7 +94,7 @@ ui <- fluidPage(
            uiOutput('category_view'),
          )
       ),
-      column(4,
+      column(3,
              wellPanel(
                h3('List:',style="margin-top:0"),
                tabsetPanel(type = "tabs", id="search_type",
@@ -365,10 +371,10 @@ server <- function(session, input, output) {
       )
     })
 
-    # stop app after session ends
-    session$onSessionEnded(function() {
-      stopApp()
-    })
+    # # stop app after session ends
+    # session$onSessionEnded(function() {
+    #   stopApp()
+    # })
     
     # Content of modal dialog
   query_modal <- modalDialog(

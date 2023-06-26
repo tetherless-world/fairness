@@ -189,13 +189,13 @@ get_notions <- function(selected_categorizations = NULL) {
   ")
   res <- SPARQL(endpoint,q,ns=ret_prefix,extra=options)$results
   
-  if(length(res)==0){
-    print("Warning: get notions query returned zero results!")
-    print("")
-    print(q)
-    print("res:")
-    print(res)
-  }
+  #if(length(res)==0){
+    #print("Warning: get notions query returned zero results!")
+    #print("")
+    #print(q)
+    #print("res:")
+    #print(res)
+  #}
   
   return(res)
 }
