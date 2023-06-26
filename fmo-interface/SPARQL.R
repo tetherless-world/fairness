@@ -78,9 +78,6 @@ SPARQL_local <- memoise(function(url="http://localhost/", query="", update="",
     return(cache$result[[qloc]])
   }
   
-  print("query not found in cache:")
-  print(query)
-  
   #try rdflib
   
   query = gsub("\\+","",query)
@@ -113,6 +110,7 @@ SPARQL_local <- memoise(function(url="http://localhost/", query="", update="",
 
 SPARQL_remote_cache <- memoise(function(url="",query="",...){
   
+
   #print(query)
   
   result = SPARQL_remote(url,query,...)
