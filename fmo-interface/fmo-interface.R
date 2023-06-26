@@ -173,7 +173,7 @@ get_notions <- function(selected_categorizations = NULL) {
   }
   
   q <- paste(sparql_prefix,"
-    SELECT DISTINCT ?notion_label ?definition ?notion_uri 
+    SELECT DISTINCT ?notion_label ?definition ?notion_uri ?ord
     WHERE {
        ?notion_uri rdfs:subClassOf+ fmo:fairness_notion.
        FILTER (NOT EXISTS {?x fmo:mapsTo ?notion_uri}
@@ -183,8 +183,9 @@ get_notions <- function(selected_categorizations = NULL) {
        ?notion_uri rdfs:label ?notion_label_.
        BIND(str(?notion_label_) AS ?notion_label).
        ?notion_uri skos:definition ?definition.
+       BIND(IF(EXISTS{?notion_uri rdfs:subClassOf+ fmo:regression_fairness_notion},1,2) AS ?ord)
        ",filter_cat,"
-    }
+    } ORDER BY ?ord
   ")
   res <- SPARQL(endpoint,q,ns=ret_prefix,extra=options)$results
   
@@ -232,7 +233,7 @@ get_metrics <- function(selected_categorizations = NULL) {
   }
   
   q <- paste(sparql_prefix,"
-  SELECT DISTINCT ?metric_uri ?metric_label ?notion_label ?definition ?notion_uri
+  SELECT DISTINCT ?metric_uri ?metric_label ?notion_label ?definition ?notion_uri ?ord
   WHERE {
     ?metric_uri rdfs:subClassOf+ fmo:fairness_metric.
     ?metric_uri rdfs:label ?metric_label_.
@@ -257,8 +258,10 @@ get_metrics <- function(selected_categorizations = NULL) {
     ?notion_uri rdfs:label ?notion_label_.
     BIND(str(?notion_label_) AS ?notion_label).
     
+    BIND(IF(EXISTS{?notion_uri rdfs:subClassOf+ fmo:regression_fairness_notion},1,2) AS ?ord)
+    
     FILTER (?notion_uri=fmo:fairness_notion || bound(?matches_filters))
-  } ORDER BY ?metric_label ?notion_label
+  } ORDER BY ?ord ?notion_label ?metric_label
   ")
   res <- SPARQL(endpoint,q,ns=ret_prefix,extra=options)$results
   return(res)

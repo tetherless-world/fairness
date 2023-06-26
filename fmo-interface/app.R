@@ -318,7 +318,7 @@ server <- function(session, input, output) {
       mdef = div()
       if(clean_col(class_to_show$mathematical_definition)!=""){
         mdef = tagList(
-          strong("Mathematical Definition:"),withMathJax(helpText(paste("\\(",clean_col(class_to_show$mathematical_definition)),"\\)")),
+          strong("Mathematical Definition:"),withMathJax(helpText(clean_col(class_to_show$mathematical_definition))),
           #strong("Mathematical Definition:"),withMathJax(helpText("The ranking equivalent of Statistical Parity, this notion requires that \\(P[f(X) > f(X') | (X,Y)\\in G_i,(X',Y')\\in G_j]=\\kappa\\) for some \\(\\kappa\\in[0,1]\\) for all \\(i\\neq j\\). ")),
           #strong("Mathematical Definition:"),withMathJax(helpText("$$\\min{balance(C_i)} \\forall C_i \\in C$$")),
           br()

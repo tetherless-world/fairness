@@ -38,6 +38,9 @@ file <- rdf_parse(".\\fairnessmetrics.owl")
 
 cache <<- readRDS(file = "cache.Rds")
 
+# code to create cache:
+#cache <<- 
+
 saveToCache <- function(query,result){
   if(!(query %in% cache$query)){
     cache$query <<- append(cache$query,query)
