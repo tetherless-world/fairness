@@ -49,6 +49,10 @@ extCheckboxGroupInput <- function(...) {
 ## App
 
 all_cat <- get_categories()
+# removing individual fairness as a high-level notion:
+# inelegant temporary hack 
+all_cat <- subset(all_cat, category_uri!="fmo:individual-level_fairness_notion")
+
 categorizations <- unique(na.omit(all_cat$categorization_uri))
 
 all_subcat <- get_subcategories()
@@ -65,6 +69,8 @@ ui <- fluidPage(
   
     # RPI Logo
     img(src='RensselaerLogo_black.png', align = "left", height="75px"),
+    # TWC Logo
+    img(src='twc_green.png', align = "right", height="75px"),
     tags$br(),
     tags$br(),
     tags$br(),
@@ -77,7 +83,7 @@ ui <- fluidPage(
     hr(),
     fluidRow(
       
-      column(3,
+      column(4,
          wellPanel(
            # div(class = 'subcat',id="test",
            #     extCheckboxGroupInput("inCh_ckboxGroup", "Input checkbox<i>ital</i>",
@@ -88,7 +94,7 @@ ui <- fluidPage(
            uiOutput('category_view'),
          )
       ),
-      column(4,
+      column(3,
              wellPanel(
                h3('List:',style="margin-top:0"),
                tabsetPanel(type = "tabs", id="search_type",
@@ -144,10 +150,10 @@ server <- function(session, input, output) {
     
     selected_class <- reactive({
       if(input$search_type == "Fairness Notions" && !is.null(input$select_notion)){
-        get_class_info(input$select_notion)
+        return(get_class_info(input$select_notion))
       }
       if(input$search_type == "Fairness Metrics" && !is.null(input$select_metric)){
-        get_class_info(input$select_metric)
+        return(get_class_info(input$select_metric))
       }
     })
     
@@ -307,21 +313,47 @@ server <- function(session, input, output) {
           strong("Select a concept from the list view, or hover over a concept from the category view on the left, to see details here about the concept.")
         ))
       }
-      pdef = br()
-      if(clean_col(class_to_show$probabilistic_definition)!=""){
+      pdef = div()
+      pdef_res = clean_col(class_to_show$probabilistic_definition)
+      if(pdef_res!=""){
         pdef = tagList(
-          br(),
-          strong("Probabilistic Definition:"),span(clean_col(class_to_show$probabilistic_definition)),
+          strong("Probabilistic Definition:"),span(pdef_res),
           br()
         )
       }
-      mdef = br()
+      mdef = div()
       if(clean_col(class_to_show$mathematical_definition)!=""){
         mdef = tagList(
-          br(),
-          strong("Mathematical Definition:"),withMathJax(helpText(paste("\\(",clean_col(class_to_show$mathematical_definition)),"\\)")),
+          strong("Mathematical Definition:"),withMathJax(helpText(clean_col(class_to_show$mathematical_definition))),
           #strong("Mathematical Definition:"),withMathJax(helpText("The ranking equivalent of Statistical Parity, this notion requires that \\(P[f(X) > f(X') | (X,Y)\\in G_i,(X',Y')\\in G_j]=\\kappa\\) for some \\(\\kappa\\in[0,1]\\) for all \\(i\\neq j\\). ")),
           #strong("Mathematical Definition:"),withMathJax(helpText("$$\\min{balance(C_i)} \\forall C_i \\in C$$")),
+          br()
+        )
+      }
+      measures_notion = div()
+      if(clean_col(class_to_show$notion_label)!=""){
+        measures_notion = tagList(
+          strong("Measures:"),span(str_to_title(clean_col(class_to_show$notion_label))),br()
+        )
+      } else if("fmo:fairness_metric" %in% class_to_show$superclass_uri){
+        measures_notion = tagList(
+          strong("Measurement of any fairness notion"),br(),
+        )
+      }
+      measured_by_metric = div()
+      metric_res = clean_col(class_to_show$metric_label,single=FALSE)
+      if(length(metric_res)>0){
+        metric_taglist = lapply(metric_res, function(metric_label){
+          tagList(span(paste("-",str_to_title(metric_label),sep="  ")),br())
+        })
+        measured_by_metric = tagList(
+          strong("Measured specifically by:"),br(),
+          metric_taglist,
+          br()
+        )
+      }else if("fmo:fairness_notion" %in% class_to_show$superclass_uri){
+        measured_by_metric = tagList(
+          strong("Measured by any generic fairness metric"),br(),
           br()
         )
       }
@@ -329,18 +361,20 @@ server <- function(session, input, output) {
       tagList(
         h3(str_to_title(clean_col(class_to_show$label)),style="margin-top:0"),
         h4(str_to_title(clean_col(class_to_show$superclass_label))),
-        strong("Description:"),span(clean_col(class_to_show$definition)),
+        measures_notion,
+        strong("Description:"),span(clean_col(class_to_show$definition)),br(),
         pdef,
         mdef,
         br(),
+        measured_by_metric,
         strong("Source:"),a(href=clean_col(class_to_show$source),clean_col(class_to_show$source))
       )
     })
 
-    # stop app after session ends
-    session$onSessionEnded(function() {
-      stopApp()
-    })
+    # # stop app after session ends
+    # session$onSessionEnded(function() {
+    #   stopApp()
+    # })
     
     # Content of modal dialog
   query_modal <- modalDialog(

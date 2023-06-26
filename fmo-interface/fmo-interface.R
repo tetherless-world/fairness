@@ -82,8 +82,6 @@ get_categories <- function() {
   res <- res %>% 
     mutate(query_notion = str_replace(query_notion, "\\?category_uri", category_uri))
   
-  print(res)
-  
   return(res)
 }
 
@@ -175,7 +173,7 @@ get_notions <- function(selected_categorizations = NULL) {
   }
   
   q <- paste(sparql_prefix,"
-    SELECT DISTINCT ?notion_label ?definition ?notion_uri 
+    SELECT DISTINCT ?notion_label ?definition ?notion_uri ?ord
     WHERE {
        ?notion_uri rdfs:subClassOf+ fmo:fairness_notion.
        FILTER (NOT EXISTS {?x fmo:mapsTo ?notion_uri}
@@ -185,18 +183,19 @@ get_notions <- function(selected_categorizations = NULL) {
        ?notion_uri rdfs:label ?notion_label_.
        BIND(str(?notion_label_) AS ?notion_label).
        ?notion_uri skos:definition ?definition.
+       BIND(IF(EXISTS{?notion_uri rdfs:subClassOf+ fmo:regression_fairness_notion},1,2) AS ?ord)
        ",filter_cat,"
-    }
+    } ORDER BY ?ord
   ")
   res <- SPARQL(endpoint,q,ns=ret_prefix,extra=options)$results
   
-  if(length(res)==0){
-    print("Res length zero!")
-    print("")
-    print(q)
-    print("res:")
-    print(res)
-  }
+  #if(length(res)==0){
+    #print("Warning: get notions query returned zero results!")
+    #print("")
+    #print(q)
+    #print("res:")
+    #print(res)
+  #}
   
   return(res)
 }
@@ -234,7 +233,7 @@ get_metrics <- function(selected_categorizations = NULL) {
   }
   
   q <- paste(sparql_prefix,"
-  SELECT DISTINCT ?metric_uri ?metric_label ?notion_label ?definition ?notion_uri
+  SELECT DISTINCT ?metric_uri ?metric_label ?notion_label ?definition ?notion_uri ?ord
   WHERE {
     ?metric_uri rdfs:subClassOf+ fmo:fairness_metric.
     ?metric_uri rdfs:label ?metric_label_.
@@ -259,8 +258,10 @@ get_metrics <- function(selected_categorizations = NULL) {
     ?notion_uri rdfs:label ?notion_label_.
     BIND(str(?notion_label_) AS ?notion_label).
     
+    BIND(IF(EXISTS{?notion_uri rdfs:subClassOf+ fmo:regression_fairness_notion},1,2) AS ?ord)
+    
     FILTER (?notion_uri=fmo:fairness_notion || bound(?matches_filters))
-  } ORDER BY ?metric_label ?notion_label
+  } ORDER BY ?ord ?notion_label ?metric_label
   ")
   res <- SPARQL(endpoint,q,ns=ret_prefix,extra=options)$results
   return(res)
@@ -281,11 +282,11 @@ get_named_metrics <- function(cat = NULL) {
 
 # Populate class view pane:
 
-get_class_info <- function(class_uri,type="notion") {
+get_class_info <- function(class_uri) {
   
-  if(type == "notion"){
     q <- paste(sparql_prefix,"
-      SELECT DISTINCT ?label ?definition ?mathematical_definition ?probabilistic_definition ?source ?alt_term ?superclass_uri ?superclass_label
+ 
+      SELECT DISTINCT ?label ?definition ?mathematical_definition ?probabilistic_definition ?source ?alt_term ?superclass_uri ?superclass_label ?notion_uri ?notion_label ?metric_uri ?metric_label
       WHERE {
           BIND (",class_uri," AS ?class_uri)
           ?class_uri rdfs:label ?label_.
@@ -315,65 +316,43 @@ get_class_info <- function(class_uri,type="notion") {
             ?superclass_uri rdfs:label ?superclass_label_.
             BIND(str(?superclass_label_) AS ?superclass_label).
           }
-      }
-    ")
-    res <- SPARQL(endpoint,q,ns=ret_prefix,extra=options)$results
-    return(res)
-  }
-  if(type == "metric"){
-    q <- paste(sparql_prefix,"
-      SELECT DISTINCT ?label ?definition ?mathematical_definition ?probabilistic_definition ?source ?alt_term ?superclass_uri ?superclass_label
-      WHERE {
-          BIND (",class_uri," AS ?class_uri)
-          ?class_uri rdfs:label ?label_.
-          BIND(str(?label_) AS ?label).
-          {
-          ?class_uri skos:definition ?definition_.
-          BIND(str(?definition_) AS ?definition).
+          UNION {
+            ?class_uri rdfs:subClassOf+ fmo:fairness_metric.
+            ?class_uri rdfs:subClassOf [a owl:Restriction; owl:onProperty sio:000215; owl:someValuesFrom ?notion_uri].
+            ?notion_uri rdfs:subClassOf* fmo:fairness_notion.
+            ?notion_uri rdfs:label ?notion_label_.
+            BIND(str(?notion_label_) AS ?notion_label).
           }
           UNION {
-          ?class_uri dc:source ?source_.
-          BIND(str(?source_) AS ?source).
-          }
-          UNION {
-          ?class_uri iao:0000118 ?alt_term_.
-          BIND(str(?alt_term_) AS ?alt_term).
-          }
-          UNION {
-            ?class_uri fmo:mathematical_definition ?mathematical_definition_.
-            BIND(str(?mathematical_definition_) AS ?mathematical_definition).
-          }
-          UNION {
-            ?class_uri fmo:probabilistic_definition ?probabilistic_definition_.
-            BIND(str(?probabilistic_definition_) AS ?probabilistic_definition).
-          }
-          UNION {
-            ?class_uri rdfs:subClassOf+ ?superclass_uri.
-            ?superclass_uri rdfs:label ?superclass_label_.
-            BIND(str(?superclass_label_) AS ?superclass_label).
+            ?class_uri rdfs:subClassOf+ fmo:fairness_notion.
+            ?metric_uri rdfs:subClassOf+ fmo:fairness_metric.
+            ?metric_uri rdfs:subClassOf [a owl:Restriction; owl:onProperty sio:000215; owl:someValuesFrom [rdfs:subClassOf* ?class_uri]].
+            ?metric_uri rdfs:label ?metric_label_.
+            BIND(str(?metric_label_) AS ?metric_label).
           }
       }
     ")
+
     res <- SPARQL(endpoint,q,ns=ret_prefix,extra=options)$results
     return(res)
   }
-}
 
 #         OPTIONAL{?source_ rdfs:label ?source_label_.}
 #         BIND(str(COALESCE(?source_label_.,?source_)) as ?source_label).
 
-
+# Cleans a column up for display -- 
+#   returning either the first result (for single=TRUE), 
+#   or all results with NAs removed (single=FALSE)
 clean_col <- function(col, single=TRUE) {
   uniques <- unique(na.omit(col))
-  
-  if(length(uniques)==0) return("")
-  
-  if(single && length(uniques) > 1){
-    #print("WARNING: Returned too many results, taking first result from list")
-    #print(" Results returned:")
-    #print(paste(" -",uniques))
-    return(uniques[1])
+  if(single){
+    if(length(uniques)==0) return("")
+    if(length(uniques) > 1){
+      #print("WARNING: Returned too many results, taking first result from list")
+      #print(" Results returned:")
+      #print(paste(" -",uniques))
+      return(uniques[1])
+    }
   }
-  
   return(uniques)
 }

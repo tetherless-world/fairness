@@ -6,7 +6,7 @@ library(memoise)
 
 # MODE_REMOTE == TRUE: Query the endpoint, save result in cache
 # MODE_REMOTE == FALSE: Query the cache, use rdflib as a fallback
-MODE_REMOTE <- TRUE
+MODE_REMOTE <- FALSE
 
 sparqlns <- c('s'='http://www.w3.org/2005/sparql-results#')
 commonns <- c('xsd','<http://www.w3.org/2001/XMLSchema#>',
@@ -34,9 +34,14 @@ sparqltest <- function(...) {
          ...)
 }
 
+#load ontology via rdflib
 file <- rdf_parse(".\\fairnessmetrics.owl")
 
+#load cache
 cache <<- readRDS(file = "cache.Rds")
+
+# code to reset cache:
+#cache <<- cache <- list(query= list(), result= list())
 
 saveToCache <- function(query,result){
   if(!(query %in% cache$query)){
@@ -105,7 +110,8 @@ SPARQL_local <- memoise(function(url="http://localhost/", query="", update="",
 
 SPARQL_remote_cache <- memoise(function(url="",query="",...){
   
-  print(query)
+
+  #print(query)
   
   result = SPARQL_remote(url,query,...)
   #print("Caching...")
