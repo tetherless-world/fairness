@@ -129,7 +129,17 @@ ui <- fluidPage(
 server <- function(session, input, output) {
    
     # the last selected class
-    selected_class = reactiveVal(get_class_info("fmo:fairness_notion"))
+    #selected_class = reactiveVal(get_class_info("fmo:fairness_notion"))
+    
+    # the CURRENTLY selected class
+    selected_class <- reactive({
+      if(input$search_type == "Fairness Notions" && !is.null(input$select_notion)){
+        get_class_info(input$select_notion)
+      }
+      if(input$search_type == "Fairness Metrics" && !is.null(input$select_metric)){
+        get_class_info(input$select_metric)
+      }
+    })
     
     # the currently hovered class
     hovered_class = reactiveVal(NULL)
@@ -169,6 +179,8 @@ server <- function(session, input, output) {
       # determine which subcategories need to be displayed
       category_uri <- input[[select_id(cat)]]
       subcats <- all_subcat[all_subcat$supercategorization_uri==cat & all_subcat$supercategory_uri %in% category_uri,]
+      
+      # display each
       lapply(subcategorizations,function(subcat){
         if(subcat %in% subcats$categorization_uri){
           # get uris

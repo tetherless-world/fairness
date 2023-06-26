@@ -242,9 +242,8 @@ get_named_metrics <- function(cat = NULL) {
 
 # Populate class view pane:
 
-get_class_info <- function(class_uri,type="notion") {
+get_class_info <- function(class_uri) {
   
-  if(type == "notion"){
     q <- paste(sparql_prefix,"
       SELECT DISTINCT ?label ?definition ?mathematical_definition ?probabilistic_definition ?source ?alt_term ?superclass_uri ?superclass_label
       WHERE {
@@ -278,43 +277,7 @@ get_class_info <- function(class_uri,type="notion") {
           }
       }
     ")
-    res <- SPARQL(endpoint,q,ns=ret_prefix,extra=options)$results
-    return(res)
-  }
-  if(type == "metric"){
-    q <- paste(sparql_prefix,"
-      SELECT DISTINCT ?label ?definition ?mathematical_definition ?probabilistic_definition ?source ?alt_term ?superclass_uri ?superclass_label
-      WHERE {
-          BIND (",class_uri," AS ?class_uri)
-          ?class_uri rdfs:label ?label_.
-          BIND(str(?label_) AS ?label).
-          {
-          ?class_uri skos:definition ?definition_.
-          BIND(str(?definition_) AS ?definition).
-          }
-          UNION {
-          ?class_uri dc:source ?source_.
-          BIND(str(?source_) AS ?source).
-          }
-          UNION {
-          ?class_uri iao:0000118 ?alt_term_.
-          BIND(str(?alt_term_) AS ?alt_term).
-          }
-          UNION {
-            ?class_uri fmo:mathematical_definition ?mathematical_definition_.
-            BIND(str(?mathematical_definition_) AS ?mathematical_definition).
-          }
-          UNION {
-            ?class_uri fmo:probabilistic_definition ?probabilistic_definition_.
-            BIND(str(?probabilistic_definition_) AS ?probabilistic_definition).
-          }
-          UNION {
-            ?class_uri rdfs:subClassOf+ ?superclass_uri.
-            ?superclass_uri rdfs:label ?superclass_label_.
-            BIND(str(?superclass_label_) AS ?superclass_label).
-          }
-      }
-    ")
+
     res <- SPARQL(endpoint,q,ns=ret_prefix,extra=options)$results
     return(res)
   }
